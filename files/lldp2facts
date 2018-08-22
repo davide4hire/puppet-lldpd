@@ -5,14 +5,17 @@
 ##
 # written by Tim 'bastelfreak' Meusel
 ##
+lldpd_log='/tmp/lldp-fact.log'
 
-lldpctl -f json > /tmp/lldp.json 2>/dev/null
-jq . /tmp/lldp.json > /dev/null 2>&1
+lldpctl -f json > /tmp/lldp.json 2>${lldpd_log}
+jq . /tmp/lldp.json >> ${lldpd_log} 2>&1
 if [ $? == 0 ]; then
   # needed for Archlinux
   mkdir -p /opt/puppetlabs/facter/facts.d
   mv /tmp/lldp.json /opt/puppetlabs/facter/facts.d/lldp.json
+  rm -f ${lldpd_log}
 else
-  rm /tmp/lldp.json
+  cat ${lldpd_log}
+  rm -f /tmp/lldp.json
   rm -rf /opt/puppetlabs/facter/facts.d/lldp.json
 fi
