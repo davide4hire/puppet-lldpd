@@ -5,17 +5,29 @@
 ##
 # written by Tim 'bastelfreak' Meusel
 ##
-lldpd_log='/tmp/lldp-fact.log'
+log='/tmp/lldp-fact.log'
+json='/tmp/lldp.json'
 
-lldpctl -f json > /tmp/lldp.json 2>${lldpd_log}
-jq . /tmp/lldp.json >> ${lldpd_log} 2>&1
-if [ $? == 0 ]; then
-  # needed for Archlinux
-  mkdir -p /opt/puppetlabs/facter/facts.d
-  mv /tmp/lldp.json /opt/puppetlabs/facter/facts.d/lldp.json
-  rm -f ${lldpd_log}
-else
-  cat ${lldpd_log}
-  rm -f /tmp/lldp.json
-  rm -rf /opt/puppetlabs/facter/facts.d/lldp.json
+lldpctl -f json > ${json} 2>${log}
+rv=$?
+if [ $rv -ne 0 ]; then
+    echo "lldpctl exited with status of $rv"
+    if [ -f $log ]; then
+	cat $log
+    fi
+    exit $rv
+fi
+if [ -f ${json} ]; then
+    jq . ${json} >> ${log} 2>&1
+    if [ $? == 0 ]; then
+	# needed for Archlinux
+	mkdir -p /opt/puppetlabs/facter/facts.d
+	mv ${json} /opt/puppetlabs/facter/facts.d/lldp.json
+	rm -f ${log}
+    else
+	echo "jq exited with non-zero status"
+	cat ${log}
+	rm -f ${json} ${log}
+	rm -rf /opt/puppetlabs/facter/facts.d/lldp.json
+    fi
 fi
