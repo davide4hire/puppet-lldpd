@@ -5,10 +5,11 @@
 ##
 # written by Tim 'bastelfreak' Meusel
 ##
+fact_dir='/opt/puppetlabs/facter/facts.d'
 log='/tmp/lldp-fact.log'
 json='/tmp/lldp.json'
 
-lldpctl -f json > ${json} 2>${log}
+lldpctl -f json >${json} 2>${log}
 rv=$?
 if [ $rv -ne 0 ]; then
     echo "lldpctl exited with status of $rv"
@@ -18,15 +19,25 @@ if [ $rv -ne 0 ]; then
     exit $rv
 fi
 if [ -f ${json} ]; then
-    jq . ${json} >> ${log} 2>&1
+    jq . ${json} >>${log} 2>&1
     if [ $? == 0 ]; then
 	# needed for Archlinux
-	mkdir -p /opt/puppetlabs/facter/facts.d
-	mv ${json} /opt/puppetlabs/facter/facts.d/lldp.json
+	if [ ! -d ${fact_dir} ]; then
+	    mkdir -p ${fact_dir}
+	fi
+	if [ -f ${json} ]; then
+	    mv ${json} ${fact_dir}/lldp.json
+	else
+	    >&2 echo "odd, ${json} does not exist, but it did just a moment ago."
+	fi
 	rm -f ${log}
     else
 	echo "jq exited with non-zero status"
-	cat ${log}
+	if [ -f ${log} ]; then
+	    cat ${log}
+	else
+	    >&2 echo "Odd, ${log} does not exist, but the shell should have created it"
+	fi
 	rm -f ${json} ${log}
 	rm -rf /opt/puppetlabs/facter/facts.d/lldp.json
     fi
